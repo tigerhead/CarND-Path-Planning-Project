@@ -118,50 +118,34 @@ I set starting speed as 0 and speed change is not greater than 1 m/s^2 (0.224) a
 
 II. Lane change
 
-When car is too close to the car ahead and has to reduce speed, it will try to change lane. Fusion sensor data are also used to predict if there are other cars in the lane that the target car tries to change to. The target car make lane change only if other cars are out of safe distance range. Following method is implemented to check if it is to make lane change.
+When car is too close to the car ahead and has to reduce speed, it will try to change lane. Fusion sensor data are also used to predict if there are other cars in the lane that the target car tries to change to. The target car will make lane change only if other cars are out of safe distance range. Following method is implemented to check if it is safe to make lane change.
 
 ```C++
-    bool safe_to_change_lane(auto sensor_fusion, int target_lane, double car_s, int prev_points ){
-    
+bool safe_to_change_lane(auto sensor_fusion, int target_lane, double car_s, int prev_points, double safe_distance ){
+
     bool safe_to_change = true;
-    
-   for(int i=0; i<sensor_fusion.size(); i++)
-  {
-
-    //determine if car is directly ahead
-
-   double check_car_d = sensor_fusion[i][6];
-
-    // Car is in in target lane   
-    if (check_car_d < (2 + 4 * target_lane + 2 ) && check_car_d > (2 + 4 * target_lane - 2)) 
+    for(int i=0; i<sensor_fusion.size(); i++)
     {
+        //determine if car is directly ahead
+        double check_car_d = sensor_fusion[i][6];
+        if (check_car_d < (2 + 4 * target_lane + 2 ) && check_car_d > (2 + 4 * target_lane - 2))// Car is in in target lane
+        {
+            double vx = sensor_fusion[i][3];
+            double vy = sensor_fusion[i][4];
+            double check_car_speed = sqrt(vx*vx + vy*vy);
+            double check_car_s = sensor_fusion[i][5];
+            check_car_s += (double)prev_points*.02*check_car_speed;
+            double check_distance = check_car_s-car_s;
+            if(check_distance > -safe_distance/2 && check_distance < safe_distance  ){
+                safe_to_change = false;
+                break;
 
-       double vx = sensor_fusion[i][3];
-
-       double vy = sensor_fusion[i][4];
-
-      double check_car_speed = sqrt(vx*vx + vy*vy);
-
-      double check_car_s = sensor_fusion[i][5];
-
-     check_car_s += (double)prev_points*.02*check_car_speed;
-
-     double check_distance = check_car_s-car_s;
-     
-   if(check_distance > -15 && check_distance <30){
-   
-       safe_to_change = false;
-
-       break;
-
+            }
+        }
     }
-
-   }
-
-   }
-
     return safe_to_change;
-   }   
+}
+
    
 ```
 In my model, left lane change is preferred, so model check if left lance change is safe or not first. If it is possible and safe to make left lane change, the car will make left lane change. Otherwise, check if right lane change is safe. If it is possible and safe to make right lane change, the car will make right lane change.
@@ -177,7 +161,7 @@ My model can drive the car though one loop without incident at most of time. How
 ## Recorded driving video in simulator
 
 Here is the link:
-https://youtu.be/L8FJ1eNeK_w
+https://youtu.be/ummcPPRysII
 
 
 
