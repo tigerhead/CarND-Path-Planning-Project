@@ -160,7 +160,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
-bool safe_to_change_lane(auto sensor_fusion, int target_lane, double car_s, int prev_points ){
+bool safe_to_change_lane(auto sensor_fusion, int target_lane, double car_s, int prev_points, double safe_distance ){
 
     bool safe_to_change = true;
     for(int i=0; i<sensor_fusion.size(); i++)
@@ -173,14 +173,9 @@ bool safe_to_change_lane(auto sensor_fusion, int target_lane, double car_s, int 
             double vy = sensor_fusion[i][4];
             double check_car_speed = sqrt(vx*vx + vy*vy);
             double check_car_s = sensor_fusion[i][5];
-
             check_car_s += (double)prev_points*.02*check_car_speed;
-
-            double check_distance = abs(check_car_s-car_s);
-
-
-
-            if(check_distance < 15  ){
+            double check_distance = check_car_s-car_s;
+            if(check_distance > -safe_distance/2 && check_distance < safe_distance  ){
                 safe_to_change = false;
                 break;
 
@@ -188,7 +183,6 @@ bool safe_to_change_lane(auto sensor_fusion, int target_lane, double car_s, int 
         }
     }
     return safe_to_change;
-
 }
 
 int main() {
@@ -308,10 +302,10 @@ int main() {
 
 
 
-                    if( (check_distance > 0) && (check_distance<30) ){
+                    if( (check_distance > 0) && (check_distance<distance_interval) ){
 
                         too_close = true;
-                        if(check_distance > 0 && check_distance < 5){
+                        if(check_distance > 0 && check_distance < distance_interval/5.0){
                             full_break = true;
                         }
                         break;
@@ -322,7 +316,13 @@ int main() {
             }
 
             if(full_break){//emergency happened, car ahead is too close
-                ref_speed = 0;
+                if(ref_speed > 22.4){
+                    ref_speed -=-22.3;
+                }else{
+                  ref_speed = 0.1;
+                }
+
+
             }else{
 
                 if(too_close){ //if lane change is possible to keep the speed, or redue speed to wait for lane change
@@ -330,7 +330,7 @@ int main() {
                     int target_lane = current_lane - 1;  //prefer change to left lane if it is safe since left lane normally is the faster lane on hightway
                     if(target_lane >= 0 && target_lane <=2){
                         //Check if left lance change is safe
-                        bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points );
+                        bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points, distance_interval );
 
                         if(!safe_to_change)
                             target_lane = current_lane;
@@ -346,7 +346,7 @@ int main() {
                         target_lane = current_lane + 1;  //Right lane change
                         if(target_lane >= 0 && target_lane <=2){
                             //Check if right lance change is safe
-                            bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points );
+                            bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points, distance_interval);
                             if(!safe_to_change)
                                 target_lane = current_lane;
 
@@ -358,7 +358,9 @@ int main() {
                     }
 
                     if(target_lane == current_lane){
-                        ref_speed -= 0.224;
+                        if (ref_speed > 0.224){
+                            ref_speed -= 0.224;
+                        }
                     }else{
                         current_lane = target_lane;
                     }
