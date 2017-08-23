@@ -3,7 +3,7 @@ Udacity Self-Driven Car Nanodegree program Term3 Project 1
 
 ---
 
-# Path Planing Implementation Reflection
+# Path Planing Implementation
 
 ## Introduction
 Path planning is an interesting and challenging problem. The goal here is to find a safe, comfortable and efficient path through a set of dynamic maneuverable objects to reach our goal. Generally, path planning including path searching, prediction, behavior planning and trajectory generation. In this project, a path planning model on enclosed highway is implemented. So it simplify the path planning problem a lot. Since the highway map is already known, the path searching and prediction are easy. The car should just follow the highway based on the given way points. Trajectory generation and behavior planning will be main challenge in this project. 
