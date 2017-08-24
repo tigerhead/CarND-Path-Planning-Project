@@ -156,7 +156,7 @@ In simulation test, I found sometimes, another car could cut in and collision wo
 
 ##Reflection
 
-My model can drive the car though one loop without incident at most of time. However sometimes, if too many cars around, collision could happen. The behavior planning algorithm can be improved to deal with that issue. 5 state machine model can be used, and a better cost function can be implemented to decide which state the car should take.  
+My model can drive the car though one loop without incident at most of time. However sometimes, if too many cars around, collision could happen, for example, following video https://youtu.be/2PeppoFZvA4 at 6:03 mins. The behavior planning algorithm can be improved to deal with that issue. 5 state machine model can be used, and a better cost function can be implemented to decide which state the car should take.  
 
 ## Recorded driving video in simulator
 
