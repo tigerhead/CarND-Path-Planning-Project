@@ -160,7 +160,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
-bool safe_to_change_lane(auto sensor_fusion, int target_lane, double car_s, int prev_points, double safe_distance ){
+bool safe_to_change_lane(vector<vector<double>> sensor_fusion, int target_lane, double car_s, int prev_points, double safe_distance ){
 
     bool safe_to_change = true;
     for(int i=0; i<sensor_fusion.size(); i++)
