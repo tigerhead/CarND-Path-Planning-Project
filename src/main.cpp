@@ -160,7 +160,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
-bool safe_to_change_lane(vector<vector<double>> sensor_fusion, int target_lane, double car_s, int prev_points, double safe_distance ){
+bool safe_to_change_lane(vector<vector<double>> sensor_fusion, int target_lane, double car_s, int prev_points, double safe_distance, double loop_length ){
 
     bool safe_to_change = true;
     for(int i=0; i<sensor_fusion.size(); i++)
@@ -175,7 +175,14 @@ bool safe_to_change_lane(vector<vector<double>> sensor_fusion, int target_lane, 
             double check_car_s = sensor_fusion[i][5];
             check_car_s += (double)prev_points*.02*check_car_speed;
             double check_distance = check_car_s-car_s;
-            if(check_distance > -safe_distance/2 && check_distance < safe_distance  ){
+
+            //adjust check_distance when wrapping around max_s to zero
+            if (check_distance > (loop_length/2.0))
+                check_distance -= loop_length;
+            if (check_distance < (-1.0*loop_length/2.0))
+                check_distance += loop_length;
+
+            if((check_distance > (15-safe_distance) && check_distance < 0) || (check_distance > 0 && check_distance < safe_distance -5 ) ){
                 safe_to_change = false;
                 break;
 
@@ -198,7 +205,7 @@ int main() {
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
   // The max s value before wrapping around the track back to 0
-  double max_s = 6945.554;
+  double loop_length = 6945.554;
 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
@@ -226,8 +233,9 @@ int main() {
   double ref_speed = 0; //MPH
   double distance_interval = 30.0; //m
   double max_speed = 49.5;
+  int keep_lane_counter = 0;
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &ref_speed, &current_lane, &distance_interval, &max_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &ref_speed, &current_lane, &distance_interval, &max_speed, &keep_lane_counter, &loop_length](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -298,11 +306,18 @@ int main() {
 
                     check_car_s += (double)prev_points*.02*check_car_speed;
 
-                    double check_distance = check_car_s-car_s;
+                    double check_distance = check_car_s - car_s;
+
+                    //adjust check_distance when wrapping around max_s to zero
+                    if (check_distance > (loop_length/2.0))
+                        check_distance -= loop_length;
+                    if (check_distance < (-1.0*loop_length/2.0))
+                        check_distance += loop_length;
 
 
 
-                    if( (check_distance > 0) && (check_distance<distance_interval) ){
+
+                    if( (check_distance > 0) && (check_distance < distance_interval) ){
 
                         too_close = true;
                         if(check_distance > 0 && check_distance < distance_interval/5.0){
@@ -319,18 +334,22 @@ int main() {
                 if(ref_speed > 22.4){
                     ref_speed -=-22.3;
                 }else{
-                  ref_speed = 0.1;
+                  ref_speed = 0.01;
                 }
+                if(keep_lane_counter < 20)
+                    keep_lane_counter +=1;
 
 
             }else{
 
-                if(too_close){ //if lane change is possible to keep the speed, or redue speed to wait for lane change
-                    // bool left_lane_change = true;
+                if(too_close){
+                    ref_speed =max( ref_speed -0.224, 0.01);
+
+                    if(keep_lane_counter > 10){ //If lane change is possible and safe, change lane
                     int target_lane = current_lane - 1;  //prefer change to left lane if it is safe since left lane normally is the faster lane on hightway
                     if(target_lane >= 0 && target_lane <=2){
                         //Check if left lance change is safe
-                        bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points, distance_interval );
+                        bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points, distance_interval, loop_length );
 
                         if(!safe_to_change)
                             target_lane = current_lane;
@@ -346,7 +365,7 @@ int main() {
                         target_lane = current_lane + 1;  //Right lane change
                         if(target_lane >= 0 && target_lane <=2){
                             //Check if right lance change is safe
-                            bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points, distance_interval);
+                            bool safe_to_change = safe_to_change_lane(sensor_fusion, target_lane, car_s, prev_points, distance_interval, loop_length);
                             if(!safe_to_change)
                                 target_lane = current_lane;
 
@@ -358,14 +377,20 @@ int main() {
                     }
 
                     if(target_lane == current_lane){
-                        if (ref_speed > 0.224){
-                            ref_speed -= 0.224;
-                        }
+                        if(keep_lane_counter < 20)
+                            keep_lane_counter +=1;
+
+
                     }else{
                         current_lane = target_lane;
+                        keep_lane_counter = 0;
                     }
+                   }
+
                 }else if(ref_speed < max_speed){
-                    ref_speed += 0.224;
+                    ref_speed =min(max_speed, (ref_speed + 0.224));
+                    if(keep_lane_counter < 20)
+                        keep_lane_counter +=1;
                 }
             }
 
